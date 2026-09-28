@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.venv/
+venv/
+.DS_Store
+.vscode/
+.idea/
+*.log
+*.blend
+*.blend1
+dist/

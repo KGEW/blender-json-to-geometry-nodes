@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "name": "锐边测地距离扩散蒙版",
+  "interface": {
+    "inputs": [
+      {"id":"geometry_in","name":"几何体","socket_type":"NodeSocketGeometry"},
+      {"id":"sharp_vertex_group","name":"锐边顶点组","socket_type":"NodeSocketFloat","default":0.0},
+      {"id":"sharp_threshold","name":"锐边阈值","socket_type":"NodeSocketFloat","default":0.5},
+      {"id":"spread_distance","name":"扩散距离","socket_type":"NodeSocketFloat","default":0.01},
+      {"id":"attribute_name","name":"蒙版属性名称","socket_type":"NodeSocketString","default":"sharp_edge_distance_mask"}
+    ],
+    "outputs": [
+      {"id":"geometry_out","name":"几何体","socket_type":"NodeSocketGeometry"},
+      {"id":"mask_out","name":"蒙版","socket_type":"NodeSocketFloat"}
+    ]
+  },
+  "nodes": [
+    {"id":"edge_vertices","type":"GeometryNodeInputMeshEdgeVertices","label":"读取边两端位置","location":[-900,350]},
+    {"id":"edge_length","type":"ShaderNodeVectorMath","label":"真实边长","location":[-650,350],"properties":{"operation":"DISTANCE"}},
+    {"id":"sharp_selection","type":"FunctionNodeCompare","label":"锐边顶点选择","location":[-650,0],"properties":{"data_type":"FLOAT","operation":"GREATER_THAN"}},
+    {"id":"shortest_paths","type":"GeometryNodeInputShortestEdgePaths","label":"沿表面最短边路径","location":[-350,200]},
+    {"id":"safe_distance","type":"ShaderNodeMath","label":"限制最小扩散距离","location":[-350,-150],"inputs":{"1":0.000001},"properties":{"operation":"MAXIMUM"}},
+    {"id":"distance_to_mask","type":"ShaderNodeMapRange","label":"距离转平滑蒙版","location":[-50,150],"inputs":{"From Min":0.0,"To Min":1.0,"To Max":0.0},"properties":{"data_type":"FLOAT","interpolation_type":"SMOOTHERSTEP","clamp":true}},
+    {"id":"store_mask","type":"GeometryNodeStoreNamedAttribute","label":"存储锐边扩散蒙版","location":[300,250],"properties":{"data_type":"FLOAT","domain":"POINT"}}
+  ],
+  "links": [
+    {"from_node":"edge_vertices","from_socket":"Position 1","to_node":"edge_length","to_socket":0},
+    {"from_node":"edge_vertices","from_socket":"Position 2","to_node":"edge_length","to_socket":1},
+    {"from_node":"__group_input__","from_socket":"锐边顶点组","to_node":"sharp_selection","to_socket":"A"},
+    {"from_node":"__group_input__","from_socket":"锐边阈值","to_node":"sharp_selection","to_socket":"B"},
+    {"from_node":"sharp_selection","from_socket":"Result","to_node":"shortest_paths","to_socket":"End Vertex"},
+    {"from_node":"edge_length","from_socket":"Value","to_node":"shortest_paths","to_socket":"Edge Cost"},
+    {"from_node":"shortest_paths","from_socket":"Total Cost","to_node":"distance_to_mask","to_socket":"Value"},
+    {"from_node":"__group_input__","from_socket":"扩散距离","to_node":"safe_distance","to_socket":0},
+    {"from_node":"safe_distance","from_socket":"Value","to_node":"distance_to_mask","to_socket":"From Max"},
+    {"from_node":"__group_input__","from_socket":"几何体","to_node":"store_mask","to_socket":"Geometry"},
+    {"from_node":"__group_input__","from_socket":"蒙版属性名称","to_node":"store_mask","to_socket":"Name"},
+    {"from_node":"distance_to_mask","from_socket":"Result","to_node":"store_mask","to_socket":"Value"},
+    {"from_node":"store_mask","from_socket":"Geometry","to_node":"__group_output__","to_socket":"几何体"},
+    {"from_node":"distance_to_mask","from_socket":"Result","to_node":"__group_output__","to_socket":"蒙版"}
+  ]
+}

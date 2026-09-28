@@ -1,0 +1,84 @@
+{
+  "version": "1.0",
+  "name": "重拓扑表面采样点蒙版代理",
+  "interface": {
+    "inputs": [
+      {"id":"geometry_in","name":"几何体","socket_type":"NodeSocketGeometry"},
+      {"id":"sharp_vertex_group","name":"锐边顶点组","socket_type":"NodeSocketFloat","default":0.0},
+      {"id":"sharp_threshold","name":"锐边阈值","socket_type":"NodeSocketFloat","default":0.5},
+      {"id":"minimum_distance","name":"采样点最小距离","socket_type":"NodeSocketFloat","default":0.002},
+      {"id":"density_max","name":"最大点密度","socket_type":"NodeSocketFloat","default":100000.0},
+      {"id":"seed","name":"随机种子","socket_type":"NodeSocketInt","default":0},
+      {"id":"spread_distance","name":"扩散距离","socket_type":"NodeSocketFloat","default":0.01},
+      {"id":"mask_name","name":"蒙版属性名称","socket_type":"NodeSocketString","default":"sharp_edge_point_mask"},
+      {"id":"normal_name","name":"法向属性名称","socket_type":"NodeSocketString","default":"proxy_sample_normal"},
+      {"id":"point_radius","name":"点显示半径","socket_type":"NodeSocketFloat","default":0.0005}
+    ],
+    "outputs": [
+      {"id":"points_out","name":"采样点代理","socket_type":"NodeSocketGeometry"},
+      {"id":"mask_out","name":"蒙版","socket_type":"NodeSocketFloat"}
+    ]
+  },
+  "nodes": [
+    {"id":"edge_vertices","type":"GeometryNodeInputMeshEdgeVertices","label":"读取锐边两端顶点","location":[-1300,500]},
+    {"id":"weight_a","type":"GeometryNodeFieldAtIndex","label":"端点一锐边权重","location":[-1050,600],"properties":{"data_type":"FLOAT","domain":"POINT"}},
+    {"id":"weight_b","type":"GeometryNodeFieldAtIndex","label":"端点二锐边权重","location":[-1050,350],"properties":{"data_type":"FLOAT","domain":"POINT"}},
+    {"id":"compare_a","type":"FunctionNodeCompare","label":"端点一已标记","location":[-800,600],"properties":{"data_type":"FLOAT","operation":"GREATER_THAN"}},
+    {"id":"compare_b","type":"FunctionNodeCompare","label":"端点二已标记","location":[-800,350],"properties":{"data_type":"FLOAT","operation":"GREATER_THAN"}},
+    {"id":"both_endpoints","type":"FunctionNodeBooleanMath","label":"两个端点同时标记","location":[-550,500],"properties":{"operation":"AND"}},
+    {"id":"sharp_edges","type":"GeometryNodeSeparateGeometry","label":"提取连续锐边","location":[-300,550],"properties":{"domain":"EDGE"}},
+
+    {"id":"distribute_points","type":"GeometryNodeDistributePointsOnFaces","label":"Poisson 表面均匀采样点","location":[-800,-150],"properties":{"distribute_method":"POISSON"}},
+    {"id":"point_position","type":"GeometryNodeInputPosition","label":"采样点位置","location":[-300,100]},
+    {"id":"edge_proximity","type":"GeometryNodeProximity","label":"采样点到连续锐边距离","location":[-50,300],"properties":{"target_element":"EDGES"}},
+    {"id":"safe_spread","type":"ShaderNodeMath","label":"限制最小扩散距离","location":[-50,0],"inputs":{"1":0.000001},"properties":{"operation":"MAXIMUM"}},
+    {"id":"distance_to_mask","type":"ShaderNodeMapRange","label":"距离转平滑蒙版","location":[250,250],"inputs":{"From Min":0.0,"To Min":1.0,"To Max":0.0},"properties":{"data_type":"FLOAT","interpolation_type":"SMOOTHERSTEP","clamp":true}},
+    {"id":"valid_mask","type":"ShaderNodeMath","label":"排除无效锐边距离","location":[500,250],"properties":{"operation":"MULTIPLY"}},
+
+    {"id":"surface_normal","type":"GeometryNodeInputNormal","label":"重拓扑表面平滑法向","location":[-50,-300]},
+    {"id":"sample_normal","type":"GeometryNodeSampleNearestSurface","label":"采样重拓扑表面法向","location":[250,-250],"properties":{"data_type":"FLOAT_VECTOR"}},
+    {"id":"store_mask","type":"GeometryNodeStoreNamedAttribute","label":"存储点云蒙版","location":[750,100],"properties":{"data_type":"FLOAT","domain":"POINT"}},
+    {"id":"store_normal","type":"GeometryNodeStoreNamedAttribute","label":"存储点云参考法向","location":[1000,100],"properties":{"data_type":"FLOAT_VECTOR","domain":"POINT"}},
+    {"id":"set_radius","type":"GeometryNodeSetPointRadius","label":"设置点显示半径","location":[1250,100]}
+  ],
+  "links": [
+    {"from_node":"edge_vertices","from_socket":"Vertex Index 1","to_node":"weight_a","to_socket":"Index"},
+    {"from_node":"edge_vertices","from_socket":"Vertex Index 2","to_node":"weight_b","to_socket":"Index"},
+    {"from_node":"__group_input__","from_socket":"锐边顶点组","to_node":"weight_a","to_socket":"Value"},
+    {"from_node":"__group_input__","from_socket":"锐边顶点组","to_node":"weight_b","to_socket":"Value"},
+    {"from_node":"weight_a","from_socket":"Value","to_node":"compare_a","to_socket":"A"},
+    {"from_node":"weight_b","from_socket":"Value","to_node":"compare_b","to_socket":"A"},
+    {"from_node":"__group_input__","from_socket":"锐边阈值","to_node":"compare_a","to_socket":"B"},
+    {"from_node":"__group_input__","from_socket":"锐边阈值","to_node":"compare_b","to_socket":"B"},
+    {"from_node":"compare_a","from_socket":"Result","to_node":"both_endpoints","to_socket":0},
+    {"from_node":"compare_b","from_socket":"Result","to_node":"both_endpoints","to_socket":1},
+    {"from_node":"__group_input__","from_socket":"几何体","to_node":"sharp_edges","to_socket":"Geometry"},
+    {"from_node":"both_endpoints","from_socket":"Boolean","to_node":"sharp_edges","to_socket":"Selection"},
+
+    {"from_node":"__group_input__","from_socket":"几何体","to_node":"distribute_points","to_socket":"Mesh"},
+    {"from_node":"__group_input__","from_socket":"采样点最小距离","to_node":"distribute_points","to_socket":"Distance Min"},
+    {"from_node":"__group_input__","from_socket":"最大点密度","to_node":"distribute_points","to_socket":"Density Max"},
+    {"from_node":"__group_input__","from_socket":"随机种子","to_node":"distribute_points","to_socket":"Seed"},
+    {"from_node":"sharp_edges","from_socket":"Selection","to_node":"edge_proximity","to_socket":"Geometry"},
+    {"from_node":"point_position","from_socket":"Position","to_node":"edge_proximity","to_socket":"Sample Position"},
+    {"from_node":"edge_proximity","from_socket":"Distance","to_node":"distance_to_mask","to_socket":"Value"},
+    {"from_node":"__group_input__","from_socket":"扩散距离","to_node":"safe_spread","to_socket":0},
+    {"from_node":"safe_spread","from_socket":"Value","to_node":"distance_to_mask","to_socket":"From Max"},
+    {"from_node":"distance_to_mask","from_socket":"Result","to_node":"valid_mask","to_socket":0},
+    {"from_node":"edge_proximity","from_socket":"Is Valid","to_node":"valid_mask","to_socket":1},
+
+    {"from_node":"__group_input__","from_socket":"几何体","to_node":"sample_normal","to_socket":"Mesh"},
+    {"from_node":"surface_normal","from_socket":"Normal","to_node":"sample_normal","to_socket":"Value"},
+    {"from_node":"point_position","from_socket":"Position","to_node":"sample_normal","to_socket":"Sample Position"},
+    {"from_node":"distribute_points","from_socket":"Points","to_node":"store_mask","to_socket":"Geometry"},
+    {"from_node":"__group_input__","from_socket":"蒙版属性名称","to_node":"store_mask","to_socket":"Name"},
+    {"from_node":"valid_mask","from_socket":"Value","to_node":"store_mask","to_socket":"Value"},
+    {"from_node":"store_mask","from_socket":"Geometry","to_node":"store_normal","to_socket":"Geometry"},
+    {"from_node":"__group_input__","from_socket":"法向属性名称","to_node":"store_normal","to_socket":"Name"},
+    {"from_node":"sample_normal","from_socket":"Value","to_node":"store_normal","to_socket":"Value"},
+    {"from_node":"store_normal","from_socket":"Geometry","to_node":"set_radius","to_socket":"Points"},
+    {"from_node":"__group_input__","from_socket":"点显示半径","to_node":"set_radius","to_socket":"Radius"},
+    {"from_node":"set_radius","from_socket":"Points","to_node":"__group_output__","to_socket":"采样点代理"},
+    {"from_node":"valid_mask","from_socket":"Value","to_node":"__group_output__","to_socket":"蒙版"}
+  ]
+}

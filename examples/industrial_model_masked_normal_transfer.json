@@ -1,0 +1,50 @@
+{
+  "version": "1.0",
+  "name": "工业模型局部法向传递",
+  "interface": {
+    "inputs": [
+      {"id":"geometry_in","name":"几何体","socket_type":"NodeSocketGeometry"},
+      {"id":"guide_object","name":"参考模型","socket_type":"NodeSocketObject"},
+      {"id":"transfer_mask","name":"顶点组或遮罩","socket_type":"NodeSocketFloat","default":0.0},
+      {"id":"influence","name":"传递强度","socket_type":"NodeSocketFloat","default":1.0}
+    ],
+    "outputs": [
+      {"id":"geometry_out","name":"几何体","socket_type":"NodeSocketGeometry"}
+    ]
+  },
+  "nodes": [
+    {"id":"guide_info","type":"GeometryNodeObjectInfo","label":"读取重拓扑参考模型","location":[-900,300],"properties":{"transform_space":"RELATIVE"}},
+    {"id":"original_normal","type":"GeometryNodeInputNormal","label":"工业模型原法向","location":[-900,-350]},
+    {"id":"target_position","type":"GeometryNodeInputPosition","label":"工业模型位置","location":[-900,0]},
+    {"id":"sample_guide_normal","type":"GeometryNodeSampleNearestSurface","label":"采样参考模型法向","location":[-600,250],"properties":{"data_type":"FLOAT_VECTOR"}},
+    {"id":"mask_influence","type":"ShaderNodeMath","label":"遮罩 × 传递强度","location":[-350,-100],"properties":{"operation":"MULTIPLY"}},
+    {"id":"valid_factor","type":"ShaderNodeMath","label":"有效传递权重","location":[-100,-100],"properties":{"operation":"MULTIPLY"}},
+    {"id":"inverse_factor","type":"ShaderNodeMath","label":"保留原法向权重","location":[150,-200],"inputs":{"0":1.0},"properties":{"operation":"SUBTRACT"}},
+    {"id":"original_scale","type":"ShaderNodeVectorMath","label":"工业模型法向加权","location":[400,-250],"properties":{"operation":"SCALE"}},
+    {"id":"guide_scale","type":"ShaderNodeVectorMath","label":"参考模型法向加权","location":[400,100],"properties":{"operation":"SCALE"}},
+    {"id":"normal_add","type":"ShaderNodeVectorMath","label":"混合法向","location":[650,-50],"properties":{"operation":"ADD"}},
+    {"id":"normal_normalize","type":"ShaderNodeVectorMath","label":"归一化法向","location":[850,-50],"properties":{"operation":"NORMALIZE"}},
+    {"id":"set_mesh_normal","type":"GeometryNodeSetMeshNormal","label":"写入面角自定义法向","location":[1100,100],"properties":{"mode":"FREE","domain":"CORNER"}}
+  ],
+  "links": [
+    {"from_node":"__group_input__","from_socket":"参考模型","to_node":"guide_info","to_socket":"Object"},
+    {"from_node":"guide_info","from_socket":"Geometry","to_node":"sample_guide_normal","to_socket":"Mesh"},
+    {"from_node":"original_normal","from_socket":"Normal","to_node":"sample_guide_normal","to_socket":"Value"},
+    {"from_node":"target_position","from_socket":"Position","to_node":"sample_guide_normal","to_socket":"Sample Position"},
+    {"from_node":"__group_input__","from_socket":"顶点组或遮罩","to_node":"mask_influence","to_socket":0},
+    {"from_node":"__group_input__","from_socket":"传递强度","to_node":"mask_influence","to_socket":1},
+    {"from_node":"mask_influence","from_socket":"Value","to_node":"valid_factor","to_socket":0},
+    {"from_node":"sample_guide_normal","from_socket":"Is Valid","to_node":"valid_factor","to_socket":1},
+    {"from_node":"valid_factor","from_socket":"Value","to_node":"inverse_factor","to_socket":1},
+    {"from_node":"original_normal","from_socket":"Normal","to_node":"original_scale","to_socket":0},
+    {"from_node":"inverse_factor","from_socket":"Value","to_node":"original_scale","to_socket":3},
+    {"from_node":"sample_guide_normal","from_socket":"Value","to_node":"guide_scale","to_socket":0},
+    {"from_node":"valid_factor","from_socket":"Value","to_node":"guide_scale","to_socket":3},
+    {"from_node":"original_scale","from_socket":"Vector","to_node":"normal_add","to_socket":0},
+    {"from_node":"guide_scale","from_socket":"Vector","to_node":"normal_add","to_socket":1},
+    {"from_node":"normal_add","from_socket":"Vector","to_node":"normal_normalize","to_socket":0},
+    {"from_node":"__group_input__","from_socket":"几何体","to_node":"set_mesh_normal","to_socket":"Mesh"},
+    {"from_node":"normal_normalize","from_socket":"Vector","to_node":"set_mesh_normal","to_socket":"Custom Normal"},
+    {"from_node":"set_mesh_normal","from_socket":"Mesh","to_node":"__group_output__","to_socket":"几何体"}
+  ]
+}

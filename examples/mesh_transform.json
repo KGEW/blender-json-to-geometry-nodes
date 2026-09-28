@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "name": "Anonymous Mesh Transform",
+  "interface": {
+    "inputs": [{"id": "geometry_in", "name": "Geometry", "socket_type": "NodeSocketGeometry"}],
+    "outputs": [{"id": "geometry_out", "name": "Geometry", "socket_type": "NodeSocketGeometry"}]
+  },
+  "nodes": [
+    {"id":"cube","type":"GeometryNodeMeshCube","label":"Cube","location":[-500,0],"inputs":{"Size":[2.0,2.0,2.0]}},
+    {"id":"transform","type":"GeometryNodeTransform","location":[-200,0],"inputs":{"Translation":[0.0,0.0,1.0]}},
+    {"id":"set_material","type":"GeometryNodeSetMaterial","location":[100,0]}
+  ],
+  "links": [
+    {"from_node":"cube","from_socket":"Mesh","to_node":"transform","to_socket":"Geometry"},
+    {"from_node":"transform","from_socket":"Geometry","to_node":"set_material","to_socket":"Geometry"},
+    {"from_node":"set_material","from_socket":"Geometry","to_node":"__group_output__","to_socket":"Geometry"}
+  ]
+}

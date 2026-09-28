@@ -1,0 +1,47 @@
+{
+  "version": "1.0",
+  "name": "代理模型表面投射顶点均匀化",
+  "interface": {
+    "inputs": [
+      {"id":"geometry_in","name":"几何体","socket_type":"NodeSocketGeometry"},
+      {"id":"relax_mask","name":"均匀化遮罩","socket_type":"NodeSocketFloat","default":1.0},
+      {"id":"relax_strength","name":"松弛强度","socket_type":"NodeSocketFloat","default":0.5},
+      {"id":"iterations","name":"迭代次数","socket_type":"NodeSocketInt","default":3}
+    ],
+    "outputs": [
+      {"id":"geometry_out","name":"几何体","socket_type":"NodeSocketGeometry"}
+    ]
+  },
+  "nodes": [
+    {"id":"position","type":"GeometryNodeInputPosition","label":"原始表面位置","location":[-900,250]},
+    {"id":"blur_position","type":"GeometryNodeBlurAttribute","label":"邻域位置松弛","location":[-650,350],"properties":{"data_type":"FLOAT_VECTOR"}},
+    {"id":"mask_strength","type":"ShaderNodeMath","label":"遮罩 × 松弛强度","location":[-650,-150],"properties":{"operation":"MULTIPLY"}},
+    {"id":"clamp_factor","type":"ShaderNodeClamp","label":"限制松弛权重 0-1","location":[-400,-150]},
+    {"id":"inverse_factor","type":"ShaderNodeMath","label":"保留原位置权重","location":[-150,-250],"inputs":{"0":1.0},"properties":{"operation":"SUBTRACT"}},
+    {"id":"original_scale","type":"ShaderNodeVectorMath","label":"原位置加权","location":[100,-200],"properties":{"operation":"SCALE"}},
+    {"id":"relaxed_scale","type":"ShaderNodeVectorMath","label":"松弛位置加权","location":[100,200],"properties":{"operation":"SCALE"}},
+    {"id":"candidate_position","type":"ShaderNodeVectorMath","label":"候选均匀位置","location":[350,50],"properties":{"operation":"ADD"}},
+    {"id":"project_surface","type":"GeometryNodeSampleNearestSurface","label":"投射回原始表面","location":[600,200],"properties":{"data_type":"FLOAT_VECTOR"}},
+    {"id":"set_position","type":"GeometryNodeSetPosition","label":"写入表面位置","location":[900,250]}
+  ],
+  "links": [
+    {"from_node":"position","from_socket":"Position","to_node":"blur_position","to_socket":"Value"},
+    {"from_node":"__group_input__","from_socket":"迭代次数","to_node":"blur_position","to_socket":"Iterations"},
+    {"from_node":"__group_input__","from_socket":"均匀化遮罩","to_node":"mask_strength","to_socket":0},
+    {"from_node":"__group_input__","from_socket":"松弛强度","to_node":"mask_strength","to_socket":1},
+    {"from_node":"mask_strength","from_socket":"Value","to_node":"clamp_factor","to_socket":"Value"},
+    {"from_node":"clamp_factor","from_socket":"Result","to_node":"inverse_factor","to_socket":1},
+    {"from_node":"position","from_socket":"Position","to_node":"original_scale","to_socket":0},
+    {"from_node":"inverse_factor","from_socket":"Value","to_node":"original_scale","to_socket":3},
+    {"from_node":"blur_position","from_socket":"Value","to_node":"relaxed_scale","to_socket":0},
+    {"from_node":"clamp_factor","from_socket":"Result","to_node":"relaxed_scale","to_socket":3},
+    {"from_node":"original_scale","from_socket":"Vector","to_node":"candidate_position","to_socket":0},
+    {"from_node":"relaxed_scale","from_socket":"Vector","to_node":"candidate_position","to_socket":1},
+    {"from_node":"__group_input__","from_socket":"几何体","to_node":"project_surface","to_socket":"Mesh"},
+    {"from_node":"position","from_socket":"Position","to_node":"project_surface","to_socket":"Value"},
+    {"from_node":"candidate_position","from_socket":"Vector","to_node":"project_surface","to_socket":"Sample Position"},
+    {"from_node":"__group_input__","from_socket":"几何体","to_node":"set_position","to_socket":"Geometry"},
+    {"from_node":"project_surface","from_socket":"Value","to_node":"set_position","to_socket":"Position"},
+    {"from_node":"set_position","from_socket":"Geometry","to_node":"__group_output__","to_socket":"几何体"}
+  ]
+}

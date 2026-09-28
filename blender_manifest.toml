@@ -1,0 +1,9 @@
+schema_version = "1.0.0"
+id = "blender_json_geometry_nodes"
+version = "0.6.0"
+name = "JSON 转几何节点"
+tagline = "将经过验证的 JSON 导入几何节点"
+maintainer = "KGEW"
+type = "add-on"
+blender_version_min = "5.2.0"
+license = ["SPDX:0BSD"]

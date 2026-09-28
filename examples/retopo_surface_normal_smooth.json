@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "name": "重拓扑表面法向平滑",
+  "interface": {
+    "inputs": [
+      {"id":"geometry_in","name":"几何体","socket_type":"NodeSocketGeometry"},
+      {"id":"smooth_mask","name":"平滑遮罩","socket_type":"NodeSocketFloat","default":1.0},
+      {"id":"smooth_strength","name":"平滑强度","socket_type":"NodeSocketFloat","default":1.0},
+      {"id":"iterations","name":"迭代次数","socket_type":"NodeSocketInt","default":3}
+    ],
+    "outputs": [
+      {"id":"geometry_out","name":"几何体","socket_type":"NodeSocketGeometry"}
+    ]
+  },
+  "nodes": [
+    {"id":"original_normal","type":"GeometryNodeInputNormal","label":"原始法向","location":[-800,200]},
+    {"id":"blur_normal","type":"GeometryNodeBlurAttribute","label":"邻域法向平滑","location":[-550,250],"properties":{"data_type":"FLOAT_VECTOR"}},
+    {"id":"mask_strength","type":"ShaderNodeMath","label":"遮罩 × 强度","location":[-300,-150],"properties":{"operation":"MULTIPLY"}},
+    {"id":"inverse_factor","type":"ShaderNodeMath","label":"保留原法向权重","location":[-50,-200],"inputs":{"0":1.0},"properties":{"operation":"SUBTRACT"}},
+    {"id":"original_scale","type":"ShaderNodeVectorMath","label":"原法向加权","location":[200,-150],"properties":{"operation":"SCALE"}},
+    {"id":"smooth_scale","type":"ShaderNodeVectorMath","label":"平滑法向加权","location":[200,200],"properties":{"operation":"SCALE"}},
+    {"id":"normal_add","type":"ShaderNodeVectorMath","label":"混合法向","location":[450,50],"properties":{"operation":"ADD"}},
+    {"id":"normal_normalize","type":"ShaderNodeVectorMath","label":"归一化法向","location":[650,50],"properties":{"operation":"NORMALIZE"}},
+    {"id":"set_mesh_normal","type":"GeometryNodeSetMeshNormal","label":"写入点域自定义法向","location":[900,150],"properties":{"mode":"FREE","domain":"POINT"}}
+  ],
+  "links": [
+    {"from_node":"original_normal","from_socket":"Normal","to_node":"blur_normal","to_socket":"Value"},
+    {"from_node":"__group_input__","from_socket":"迭代次数","to_node":"blur_normal","to_socket":"Iterations"},
+    {"from_node":"__group_input__","from_socket":"平滑遮罩","to_node":"mask_strength","to_socket":0},
+    {"from_node":"__group_input__","from_socket":"平滑强度","to_node":"mask_strength","to_socket":1},
+    {"from_node":"mask_strength","from_socket":"Value","to_node":"inverse_factor","to_socket":1},
+    {"from_node":"original_normal","from_socket":"Normal","to_node":"original_scale","to_socket":0},
+    {"from_node":"inverse_factor","from_socket":"Value","to_node":"original_scale","to_socket":3},
+    {"from_node":"blur_normal","from_socket":"Value","to_node":"smooth_scale","to_socket":0},
+    {"from_node":"mask_strength","from_socket":"Value","to_node":"smooth_scale","to_socket":3},
+    {"from_node":"original_scale","from_socket":"Vector","to_node":"normal_add","to_socket":0},
+    {"from_node":"smooth_scale","from_socket":"Vector","to_node":"normal_add","to_socket":1},
+    {"from_node":"normal_add","from_socket":"Vector","to_node":"normal_normalize","to_socket":0},
+    {"from_node":"__group_input__","from_socket":"几何体","to_node":"set_mesh_normal","to_socket":"Mesh"},
+    {"from_node":"normal_normalize","from_socket":"Vector","to_node":"set_mesh_normal","to_socket":"Custom Normal"},
+    {"from_node":"set_mesh_normal","from_socket":"Mesh","to_node":"__group_output__","to_socket":"几何体"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "name": "Anonymous Minimal Geometry",
+  "interface": {
+    "inputs": [{"id": "geometry_in", "name": "Geometry", "socket_type": "NodeSocketGeometry"}],
+    "outputs": [{"id": "geometry_out", "name": "Geometry", "socket_type": "NodeSocketGeometry"}]
+  },
+  "nodes": [],
+  "links": [{"from_node":"__group_input__","from_socket":"Geometry","to_node":"__group_output__","to_socket":"Geometry"}]
+}

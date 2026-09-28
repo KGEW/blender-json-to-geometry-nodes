@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "name": "Normal Field Fixed Radius Mask v1",
+  "interface": {
+    "inputs": [
+      {"id": "geometry_in", "name": "Geometry", "socket_type": "NodeSocketGeometry"},
+      {"id": "radius", "name": "Sample Radius", "socket_type": "NodeSocketFloat", "default": 0.05},
+      {"id": "reference_axis", "name": "Reference Axis", "socket_type": "NodeSocketVector", "default": [0.0, 0.0, 1.0]},
+      {"id": "low_variation", "name": "Low Variation", "socket_type": "NodeSocketFloat", "default": 0.05},
+      {"id": "high_variation", "name": "High Variation", "socket_type": "NodeSocketFloat", "default": 0.35}
+    ],
+    "outputs": [
+      {"id": "geometry_out", "name": "Geometry", "socket_type": "NodeSocketGeometry"},
+      {"id": "mask", "name": "Mask", "socket_type": "NodeSocketFloat"}
+    ]
+  },
+  "nodes": [
+    {"id": "normal", "type": "GeometryNodeInputNormal", "label": "Smooth Normal Field", "location": [-1100, 300]},
+    {"id": "position", "type": "GeometryNodeInputPosition", "label": "Surface Position", "location": [-1100, -250]},
+    {"id": "tangent_cross", "type": "ShaderNodeVectorMath", "label": "Reference × Normal", "location": [-850, 500], "properties": {"operation": "CROSS_PRODUCT"}},
+    {"id": "tangent_normalize", "type": "ShaderNodeVectorMath", "label": "Tangent T", "location": [-650, 500], "properties": {"operation": "NORMALIZE"}},
+    {"id": "bitangent_cross", "type": "ShaderNodeVectorMath", "label": "Bitangent B", "location": [-450, 650], "properties": {"operation": "CROSS_PRODUCT"}},
+    {"id": "tangent_scale", "type": "ShaderNodeVectorMath", "label": "T × Radius", "location": [-450, 350], "properties": {"operation": "SCALE"}},
+    {"id": "bitangent_scale", "type": "ShaderNodeVectorMath", "label": "B × Radius", "location": [-250, 550], "properties": {"operation": "SCALE"}},
+    {"id": "sample_position_t", "type": "ShaderNodeVectorMath", "label": "P + R·T", "location": [-200, 150], "properties": {"operation": "ADD"}},
+    {"id": "sample_position_b", "type": "ShaderNodeVectorMath", "label": "P + R·B", "location": [0, 350], "properties": {"operation": "ADD"}},
+    {"id": "sample_normal_t", "type": "GeometryNodeSampleNearestSurface", "label": "Sample Normal Along T", "location": [50, 50], "properties": {"data_type": "FLOAT_VECTOR"}},
+    {"id": "sample_normal_b", "type": "GeometryNodeSampleNearestSurface", "label": "Sample Normal Along B", "location": [250, 250], "properties": {"data_type": "FLOAT_VECTOR"}},
+    {"id": "normal_distance_t", "type": "ShaderNodeVectorMath", "label": "Normal Change T", "location": [300, -100], "properties": {"operation": "DISTANCE"}},
+    {"id": "normal_distance_b", "type": "ShaderNodeVectorMath", "label": "Normal Change B", "location": [500, 100], "properties": {"operation": "DISTANCE"}},
+    {"id": "maximum_change", "type": "ShaderNodeMath", "label": "Maximum Normal Change", "location": [700, 0], "properties": {"operation": "MAXIMUM"}},
+    {"id": "smooth_mask", "type": "ShaderNodeMapRange", "label": "Smooth 0-1 Mask", "location": [900, 0], "inputs": {"To Min": 0.0, "To Max": 1.0}, "properties": {"interpolation_type": "SMOOTHERSTEP", "clamp": true}},
+    {"id": "store_mask", "type": "GeometryNodeStoreNamedAttribute", "label": "Store normal_turn_mask", "location": [1150, 250], "inputs": {"Name": "normal_turn_mask"}, "properties": {"data_type": "FLOAT", "domain": "POINT"}}
+  ],
+  "links": [
+    {"from_node": "__group_input__", "from_socket": "Reference Axis", "to_node": "tangent_cross", "to_socket": 0},
+    {"from_node": "normal", "from_socket": "Normal", "to_node": "tangent_cross", "to_socket": 1},
+    {"from_node": "tangent_cross", "from_socket": "Vector", "to_node": "tangent_normalize", "to_socket": 0},
+    {"from_node": "normal", "from_socket": "Normal", "to_node": "bitangent_cross", "to_socket": 0},
+    {"from_node": "tangent_normalize", "from_socket": "Vector", "to_node": "bitangent_cross", "to_socket": 1},
+    {"from_node": "tangent_normalize", "from_socket": "Vector", "to_node": "tangent_scale", "to_socket": 0},
+    {"from_node": "__group_input__", "from_socket": "Sample Radius", "to_node": "tangent_scale", "to_socket": 3},
+    {"from_node": "bitangent_cross", "from_socket": "Vector", "to_node": "bitangent_scale", "to_socket": 0},
+    {"from_node": "__group_input__", "from_socket": "Sample Radius", "to_node": "bitangent_scale", "to_socket": 3},
+    {"from_node": "position", "from_socket": "Position", "to_node": "sample_position_t", "to_socket": 0},
+    {"from_node": "tangent_scale", "from_socket": "Vector", "to_node": "sample_position_t", "to_socket": 1},
+    {"from_node": "position", "from_socket": "Position", "to_node": "sample_position_b", "to_socket": 0},
+    {"from_node": "bitangent_scale", "from_socket": "Vector", "to_node": "sample_position_b", "to_socket": 1},
+    {"from_node": "__group_input__", "from_socket": "Geometry", "to_node": "sample_normal_t", "to_socket": "Mesh"},
+    {"from_node": "normal", "from_socket": "Normal", "to_node": "sample_normal_t", "to_socket": "Value"},
+    {"from_node": "sample_position_t", "from_socket": "Vector", "to_node": "sample_normal_t", "to_socket": "Sample Position"},
+    {"from_node": "__group_input__", "from_socket": "Geometry", "to_node": "sample_normal_b", "to_socket": "Mesh"},
+    {"from_node": "normal", "from_socket": "Normal", "to_node": "sample_normal_b", "to_socket": "Value"},
+    {"from_node": "sample_position_b", "from_socket": "Vector", "to_node": "sample_normal_b", "to_socket": "Sample Position"},
+    {"from_node": "normal", "from_socket": "Normal", "to_node": "normal_distance_t", "to_socket": 0},
+    {"from_node": "sample_normal_t", "from_socket": "Value", "to_node": "normal_distance_t", "to_socket": 1},
+    {"from_node": "normal", "from_socket": "Normal", "to_node": "normal_distance_b", "to_socket": 0},
+    {"from_node": "sample_normal_b", "from_socket": "Value", "to_node": "normal_distance_b", "to_socket": 1},
+    {"from_node": "normal_distance_t", "from_socket": "Value", "to_node": "maximum_change", "to_socket": 0},
+    {"from_node": "normal_distance_b", "from_socket": "Value", "to_node": "maximum_change", "to_socket": 1},
+    {"from_node": "maximum_change", "from_socket": "Value", "to_node": "smooth_mask", "to_socket": "Value"},
+    {"from_node": "__group_input__", "from_socket": "Low Variation", "to_node": "smooth_mask", "to_socket": "From Min"},
+    {"from_node": "__group_input__", "from_socket": "High Variation", "to_node": "smooth_mask", "to_socket": "From Max"},
+    {"from_node": "__group_input__", "from_socket": "Geometry", "to_node": "store_mask", "to_socket": "Geometry"},
+    {"from_node": "smooth_mask", "from_socket": "Result", "to_node": "store_mask", "to_socket": "Value"},
+    {"from_node": "store_mask", "from_socket": "Geometry", "to_node": "__group_output__", "to_socket": "Geometry"},
+    {"from_node": "smooth_mask", "from_socket": "Result", "to_node": "__group_output__", "to_socket": "Mask"}
+  ]
+}
